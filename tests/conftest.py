@@ -1,4 +1,3 @@
-# conftest.py
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import pytest
@@ -10,22 +9,17 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
+from urls import Urls
 
 
 ssl._create_default_https_context = ssl._create_unverified_context
 os.environ["WDM_SSL_VERIFY"] = "0"
 os.environ["CURL_CA_BUNDLE"] = ""
 
+# Убираем прокси
 for key in list(os.environ.keys()):
     if key.lower() in ("http_proxy", "https_proxy", "all_proxy"):
         del os.environ[key]
-
-
-class Config:
-    BASE_URL = 'https://stellarburgers.education-services.ru'
-    TEST_EMAIL = 'test_lee_2024@yandex.ru'
-    TEST_PASSWORD = 'SecurePass123!'
-    TEST_NAME = 'Test User'
 
 
 def pytest_addoption(parser):
@@ -34,16 +28,13 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope="session")
 def access_token():
-    """
-    Получает токен авторизации.
-    Сначала пробуем залогиниться с фиксированными данными.
-    Если пользователя нет — регистрируем его.
-    """
-    base = Config.BASE_URL
-    email = Config.TEST_EMAIL
-    password = Config.TEST_PASSWORD
-    name = Config.TEST_NAME
+    """Получает токен авторизации."""
+    base = Urls.BASE_URL
+    email = 'test_lee_2024@yandex.ru'
+    password = 'SecurePass123!'
+    name = 'Test User'
     
+
     login_resp = requests.post(
         f"{base}/api/auth/login",
         json={"email": email, "password": password},
@@ -56,6 +47,7 @@ def access_token():
         if token:
             return token
     
+    # Регистрируем нового пользователя
     reg_resp = requests.post(
         f"{base}/api/auth/register",
         json={"email": email, "password": password, "name": name},
@@ -68,28 +60,12 @@ def access_token():
         if token:
             return token
     
-    login_resp2 = requests.post(
-        f"{base}/api/auth/login",
-        json={"email": email, "password": password},
-        timeout=10,
-        verify=False
-    )
-    
-    if login_resp2.status_code == 200:
-        token = login_resp2.json().get("accessToken")
-        if token:
-            return token
-    
-    raise RuntimeError(
-        f"Не удалось получить токен авторизации.\n"
-        f"Login: {login_resp.status_code} - {login_resp.text}\n"
-        f"Register: {reg_resp.status_code} - {reg_resp.text}"
-    )
+    raise RuntimeError(f"Не удалось получить токен. Login: {login_resp.status_code}, Register: {reg_resp.status_code}")
 
 
 @pytest.fixture
 def browser(request):
-    """Фикстура браузера с обходом SSL-проблем"""
+    """Фикстура браузера"""
     browser_name = request.config.getoption('--browser')
     
     if browser_name == 'chrome':
@@ -120,12 +96,7 @@ def browser(request):
     else:
         raise ValueError(f"Unsupported browser: {browser_name}")
 
-    driver.get(Config.BASE_URL)
+    driver.get(Urls.BASE_URL)
     driver.implicitly_wait(5)
     yield driver
     driver.quit()
-
-
-@pytest.fixture
-def base_url():
-    return Config.BASE_URL

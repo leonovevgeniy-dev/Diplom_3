@@ -17,6 +17,11 @@ class BasePage:
         element = wait.until(EC.visibility_of_element_located(locator))
         return element.text
     
+    def get_element(self, locator, timeout=15):
+        """Получение элемента с ожиданием его видимости"""
+        wait = WebDriverWait(self.driver, timeout)
+        return wait.until(EC.visibility_of_element_located(locator))
+    
     def is_visible(self, locator, timeout=5):
         try:
             WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located(locator))
